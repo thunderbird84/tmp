@@ -1,0 +1,421 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0"
+         DefaultTargets="Build"
+         xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <OutDir Condition=" '$(OutDir)'=='' ">$(MSBuildThisFileDirectory)..\build\</OutDir>
+    <Configuration Condition=" '$(Configuration)'=='' ">Release</Configuration>
+    <SourceHome Condition=" '$(SourceHome)'=='' ">$(MSBuildThisFileDirectory)..\app\</SourceHome>
+    <ToolsHome Condition=" '$(ToolsHome)'=='' ">$(MSBuildThisFileDirectory)tools\</ToolsHome>
+	<BuildCmd Condition="'$(OS)' !='Unix'">$(MSBuildThisFileDirectory)..\lib\MSBuild\tools\Windows\MSBuild.exe</BuildCmd>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Solution Include="$(SourceHome)*.sln">
+      <AdditionalProperties>OutDir=$(OutDir);Configuration=$(Configuration)</AdditionalProperties>
+    </Solution>
+  </ItemGroup>
+
+  <Target Name="RestorePackages">
+    <Exec Command="&quot;$(ToolsHome)NuGet\NuGet.exe&quot; restore &quot;%(Solution.Identity)&quot;" />
+  </Target>
+
+  <Target Name="Clean">
+    <MSBuild Targets="Clean"
+             Projects="@(Solution)" />
+	<RemoveDir Directories="$(OutDir)" />
+  </Target>
+
+  <Target Name="Build" DependsOnTargets="RestorePackages">
+    <MSBuild Targets="Build"
+             Projects="@(Solution)" />
+  </Target>
+
+  <Target Name="Rebuild" DependsOnTargets="RestorePackages">
+    <MSBuild Targets="Rebuild"
+             Projects="@(Solution)" />
+  </Target>
+ 
+ <Target Name="Package">  
+  <ItemGroup>
+      <ProjectFiles Include="$(SourceHome)**\*.csproj" />      
+   </ItemGroup>
+   <!--
+  <RemoveDir Directories="$(MSBuildThisFileDirectory)NuGet" />
+  <MakeDir Directories="$(MSBuildThisFileDirectory)NuGet" />
+  -->  
+  <!--Exec Command="echo %(ProjectFiles.FullPath)"--> 
+ <Exec  Command="&quot;$(ToolsHome)NuGet\NuGet.exe&quot; pack %(ProjectFiles.Identity) -Verbosity detailed -OutputDirectory &quot;$(OutDir) &quot;" />
+</Target>
+
+ <Target Name="Deploy" >
+	<ItemGroup>
+      <NugetPackages Include="$(OutDir)**\*.nupkg" />      
+   </ItemGroup>
+	<Exec WorkingDirectory="$(PackageDir)" Command="&quot;$(ToolsHome)NuGet\NuGet.exe&quot; push &quot;%(NugetPackages.Identity)&quot;  -Verbosity detailed   -s http://54.69.100.29:8081/nexus/service/local/nuget/Nuget" />
+</Target>
+
+  <Target Name="NugetBuild">
+
+        <!-- Restore potentially build-time packages that are restored by build.cmd on Windows -->
+        <Exec Command="&quot;$(ToolsHome)NuGet\NuGet.exe&quot; install packages.config -excludeversion -outputdirectory packages" Condition="Exists('packages.config')" />
+
+        <!-- Install MSBuild nuget package if necessary -->
+        <Exec Command="&quot;$(ToolsHome)NuGet\NuGet.exe&quot; install MSBuild -excludeversion -outputdirectory packages" Condition="!Exists('packages/MSBuild/tools/Unix/MSBuild.exe')" />
+
+        <!-- Finally build with MSBuild the build.proj itself -->
+        <Exec Command="mono packages/MSBuild/tools/Unix/MSBuild.exe build.proj" />
+
+    </Target>
+	
+	<Target Name="Sync" DependsOnTargets="Sync1">
+		<Message Text="Deps.." />
+	</Target>
+	<Target Name="Sync1">
+		<ItemGroup>
+		<TestAssembly Include="$(MSBuildThisFileDirectory)..\packages\**\lib\net*\**\*.dll" Exclude="$(MSBuildThisFileDirectory)..\packages\MsBuild\**\*.*" />
+		<ReferenceAssembly Include="@(TestAssembly->'%(Filename)')" />
+		</ItemGroup>
+		 <Copy SourceFiles="@(TestAssembly)" DestinationFolder="$(MSBuildThisFileDirectory)..\bin" />
+	</Target>
+  <Target Name="Sync2">
+	 	<ItemGroup>
+			<TestAssembly Include="$(MSBuildThisFileDirectory)..\lib\**\lib\net45*\**\*.dll" Exclude="$(MSBuildThisFileDirectory)..\lib\MsBuild\**\*.*" />
+			<ReferenceAssembly Include="@(TestAssembly->'%(Filename)')" />
+
+             <CodeTmpFiles Include="$(MSBuildThisFileDirectory)..\app\**\*.cs"  />            
+
+			 <CodeTmpFiles>
+                <RelatePath>$([System.String]::Copy('%(Identity)').Replace('$(MSBuildThisFileDirectory)..\', ''))</RelatePath>
+            </CodeTmpFiles>
+
+			<Line Include="l1"><Text>&lt;?xml version="1.0" encoding="utf-8"?&gt;</Text></Line>
+			<Line Include="l1"><Text>&lt;Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003"&gt;</Text></Line>
+			<Line Include="l3"><Text>
+			<![CDATA[
+			  <Import Project="%24(MSBuildExtensionsPath)\%24(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('%24(MSBuildExtensionsPath)\%24(MSBuildToolsVersion)\Microsoft.Common.props')" />
+			  <Import Project="%24(MSBuildBinPath)\Microsoft.CSharp.targets" />
+			  <Import Project="%24(VSToolsPath)\WebApplications\Microsoft.WebApplication.targets" Condition="'%24(VSToolsPath)' != ''" />
+              <Import Project="%24(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets" Condition="false" />
+			  <PropertyGroup>
+				<Configuration Condition=" '%24(Configuration)' == '' ">Debug</Configuration>
+				<Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+				<ProductVersion>
+				</ProductVersion>
+				<SchemaVersion>2.0</SchemaVersion>
+				<ProjectGuid>{9718D72C-F196-430D-A533-059969592534}</ProjectGuid>
+				<ProjectTypeGuids>{E3E379DF-F4C6-4180-9B81-6769533ABE47}%3B{349c5851-65df-11da-9384-00065b846f21}%3B{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>
+				<OutputType>Library</OutputType>
+				<AppDesignerFolder>Properties</AppDesignerFolder>
+				<RootNamespace>Web</RootNamespace>
+				<AssemblyName>Web</AssemblyName>
+				<TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+				<MvcBuildViews>false</MvcBuildViews>
+				<UseIISExpress>true</UseIISExpress>
+				<IISExpressSSLPort />
+				<IISExpressAnonymousAuthentication />
+				<IISExpressWindowsAuthentication />
+				<IISExpressUseClassicPipelineMode />
+			  </PropertyGroup>
+			  
+			<PropertyGroup Condition=" '%24(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+				<DebugSymbols>true</DebugSymbols>
+				<DebugType>full</DebugType>
+				<Optimize>false</Optimize>
+				<OutputPath>bin\</OutputPath>
+				<DefineConstants>DEBUG%3BTRACE</DefineConstants>
+				<ErrorReport>prompt</ErrorReport>
+				<WarningLevel>4</WarningLevel>
+			</PropertyGroup>
+			
+			<PropertyGroup Condition=" '%24(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+				<DebugType>pdbonly</DebugType>
+				<Optimize>true</Optimize>
+				<OutputPath>bin\</OutputPath>
+				<DefineConstants>TRACE</DefineConstants>
+				<ErrorReport>prompt</ErrorReport>
+				<WarningLevel>4</WarningLevel>
+			</PropertyGroup>
+			  ]]>			
+			</Text></Line>
+			<!-- reference dll -->
+			<Line Include="libs-start"><Text><![CDATA[<ItemGroup>]]></Text></Line>
+			<Line Include="libs-loop"><Text>
+			<![CDATA[
+				<Reference Include="%(ReferenceAssembly.Identity)" />
+			]]>
+			</Text></Line>	
+			<Line Include="libs-end"><Text><![CDATA[</ItemGroup>]]></Text></Line>
+
+			<!-- code -->
+			<Line Include="code-start"><Text><![CDATA[<ItemGroup>]]></Text></Line>
+			<Line Include="code-loop"><Text>
+			<![CDATA[
+				<ItemGroup>
+					<Compile Include="%(CodeTmpFiles.RelatePath)" />
+				</ItemGroup>
+			]]>
+			</Text></Line>	
+			<Line Include="code-end"><Text><![CDATA[</ItemGroup>]]></Text></Line>
+		    
+			<!-- folder -->
+			<Line Include="folder-start">
+				<Text><![CDATA[
+				<ItemGroup>;
+					]]></Text>
+			</Line>
+
+			<Line Include="folder-loop"><Text>
+			<![CDATA[
+				<Folder Include="app" />
+				<Folder Include="public" />
+			]]>
+			</Text></Line>	
+			<Line Include="folder-end">
+				<Text><![CDATA[
+			</ItemGroup>
+			]]></Text></Line>
+			
+			<!-- Content -->
+			<Line Include="content-loop"><Text>
+			<![CDATA[
+			
+			]]>
+			</Text></Line>	
+
+			<Line Include="last"><Text><![CDATA[
+			 <Target Name="BeforeBuild"></Target>
+			 <Target Name="AfterBuild"></Target>
+			</Project>
+			]]></Text></Line>
+			
+    <LineText Include="%(Line.Text)" />
+  </ItemGroup>
+  <WriteLinesToFile
+     File="../build.csproj"
+     Lines="@(LineText)"
+     Overwrite="true"
+     />		
+
+     
+     <CustomPath Include="%(CodeTmpFiles.RelatePath)" >
+     	<Output   PropertyName="CustomPath" TaskParameter="Result" />
+     </CustomPath>
+     
+   
+    
+   
+  </Target>
+  
+   <UsingTask TaskName="CustomPath" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+    	<Include ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />    
+    	<Result  ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" /> 	
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.Diagnostics" />
+       <Code Type="Class" Language="cs">
+        <![CDATA[
+            using System;
+            using System.IO;
+			using System.Security;
+			using System.Collections;
+            using Microsoft.Build.Framework;
+            using Microsoft.Build.Utilities;            
+			using System.IO;
+			using System.Security;
+			using System.Collections;			
+			using System.Collections.Generic;
+			using System.Reflection;
+			using System.Text;
+
+			public class ObjectDumper
+			{
+			    private int _level;
+			    private readonly int _indentSize;
+			    private readonly StringBuilder _stringBuilder;
+			    private readonly List<int> _hashListOfFoundElements;
+
+			    private ObjectDumper(int indentSize)
+			    {
+			        _indentSize = indentSize;
+			        _stringBuilder = new StringBuilder();
+			        _hashListOfFoundElements = new List<int>();
+			    }
+
+			    public static string Dump(object element)
+			    {
+			        return Dump(element, 2);
+			    }
+
+			    public static string Dump(object element, int indentSize)
+			    {
+			        var instance = new ObjectDumper(indentSize);
+			        return instance.DumpElement(element);
+			    }
+
+			    private string DumpElement(object element)
+			    {
+			        if (element == null || element is ValueType || element is string)
+			        {
+			            Write(FormatValue(element));
+			        }
+			        else
+			        {
+			            var objectType = element.GetType();
+			            if (!typeof(IEnumerable).IsAssignableFrom(objectType))
+			            {
+			                Write("{{{0}}}", objectType.FullName);
+			                _hashListOfFoundElements.Add(element.GetHashCode());
+			                _level++;
+			            }
+
+			            var enumerableElement = element as IEnumerable;
+			            if (enumerableElement != null)
+			            {
+			                foreach (object item in enumerableElement)
+			                {
+			                    if (item is IEnumerable && !(item is string))
+			                    {
+			                        _level++;
+			                        DumpElement(item);
+			                        _level--;
+			                    }
+			                    else
+			                    {
+			                        if (!AlreadyTouched(item))
+			                            DumpElement(item);
+			                        else
+			                            Write("{{{0}}} <-- bidirectional reference found", item.GetType().FullName);
+			                    }
+			                }
+			            }
+			            else
+			            {
+			                MemberInfo[] members = element.GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance);
+			                foreach (var memberInfo in members)
+			                {
+			                    var fieldInfo = memberInfo as FieldInfo;
+			                    var propertyInfo = memberInfo as PropertyInfo;
+
+			                    if (fieldInfo == null && propertyInfo == null)
+			                        continue;
+
+			                    var type = fieldInfo != null ? fieldInfo.FieldType : propertyInfo.PropertyType;
+			                    object value = fieldInfo != null
+			                                       ? fieldInfo.GetValue(element)
+			                                       : propertyInfo.GetValue(element, null);
+
+			                    if (type.IsValueType || type == typeof(string))
+			                    {
+			                        Write("{0}: {1}", memberInfo.Name, FormatValue(value));
+			                    }
+			                    else
+			                    {
+			                        var isEnumerable = typeof(IEnumerable).IsAssignableFrom(type);
+			                        Write("{0}: {1}", memberInfo.Name, isEnumerable ? "..." : "{ }");
+
+			                        var alreadyTouched = !isEnumerable && AlreadyTouched(value);
+			                        _level++;
+			                        if (!alreadyTouched)
+			                            DumpElement(value);
+			                        else
+			                            Write("{{{0}}} <-- bidirectional reference found", value.GetType().FullName);
+			                        _level--;
+			                    }
+			                }
+			            }
+
+			            if (!typeof(IEnumerable).IsAssignableFrom(objectType))
+			            {
+			                _level--;
+			            }
+			        }
+
+			        return _stringBuilder.ToString();
+			    }
+
+			    private bool AlreadyTouched(object value)
+			    {
+			        if (value == null)
+			            return false;
+
+			        var hash = value.GetHashCode();
+			        for (var i = 0; i < _hashListOfFoundElements.Count; i++)
+			        {
+			            if (_hashListOfFoundElements[i] == hash)
+			                return true;
+			        }
+			        return false;
+			    }
+
+			    private void Write(string value, params object[] args)
+			    {
+			        var space = new string(' ', _level * _indentSize);
+
+			        if (args != null)
+			            value = string.Format(value, args);
+
+			        _stringBuilder.AppendLine(space + value);
+			    }
+
+			    private string FormatValue(object o)
+			    {
+			        if (o == null)
+			            return ("null");
+
+			        if (o is DateTime)
+			            return (((DateTime)o).ToShortDateString());
+
+			        if (o is string)
+			            return string.Format("\"{0}\"", o);
+
+			        if (o is char && (char)o == '\0') 
+			            return string.Empty; 
+
+			        if (o is ValueType)
+			            return (o.ToString());
+
+			        if (o is IEnumerable)
+			            return ("...");
+
+			        return ("{ }");
+			    }
+			}
+
+            public class CustomPath : Task
+            {  
+            	[Required]
+                public ITaskItem[] Include { get; set; }
+
+                [Output]
+                public ITaskItem[] Result {get;set;}
+                public override bool Execute()
+                {
+                    try{
+                    foreach (var item in Include)
+                    {
+                        Log.LogMessage(MessageImportance.High, 
+                                       "Got item {0}",
+                                       item.ItemSpec);
+
+                        Log.LogMessage(MessageImportance.High, 
+                                       "{0}",
+                                       ObjectDumper.Dump(item.ItemSpec));
+ 
+                       //item.SetMetadata("relatePath",.GetMetadata("Filename"))
+                    }
+                    }catch(Exception e){
+                    	Log.LogMessage("Error", MessageImportance.High); 
+                    }
+                    Result =Include;
+                    return true;
+                }
+            }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+  
+  </Project>
