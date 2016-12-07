@@ -1,6 +1,0 @@
-namespace MvcWeb.Areas.HelpPage.ModelDescriptions
-{
-    public class DictionaryModelDescription : KeyValuePairModelDescription
-    {
-    }
-}
